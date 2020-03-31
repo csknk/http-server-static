@@ -8,6 +8,7 @@
 enum type {
 	ERROR =	42,
 	LOG = 44,
+	OK = 200,
 	FORBIDDEN = 403,
 	NOT_FOUND = 404,
 };

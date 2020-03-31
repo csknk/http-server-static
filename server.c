@@ -39,6 +39,9 @@ int serve(uint16_t port)
 	report(&serverAddress);
 	int clientSocket;
 	size_t childProcessCount = 0;
+	
+	// Prevent forked child processes from becoming zombies when they exit
+//	signal(SIGCHLD, SIG_IGN);
 
 	// Wait for a connection from a client
 	// --------------------------------------------------------------------------
@@ -64,7 +67,7 @@ int serve(uint16_t port)
 
 		// Clean up zombies
 		while (childProcessCount) {
-			pid = waitpid((pid_t) - 1, NULL, WNOHANG);
+			pid = waitpid((pid_t) -1, NULL, WNOHANG);
 			if (pid < 0) {
 				dieWithSystemMessage("waitpid() failed.");
 			} else if (pid == 0) {
@@ -132,7 +135,7 @@ int router(char *request, int clientSocket, char **filename)
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
 		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
 	}
-
+	
 	// NUL terminate after the second space to simplify the request.
 	size_t requestLen = strlen(request);
 	for (size_t i = 4; i < requestLen; i++) {
@@ -141,6 +144,7 @@ int router(char *request, int clientSocket, char **filename)
 			break;
 		}
 	}
+
 	// Check for illegal access to parent directory "../"
 	// Difficult to test as most clients don't allow requests like this.
 	if (strstr(request, "..")) {
@@ -152,14 +156,13 @@ int router(char *request, int clientSocket, char **filename)
 		(void)strcpy(request, "GET /index.html");
 	}
 
+	// Set filename - the content that has been requested.
 	size_t filenameLen = strlen(request) - 5;
 	*filename = calloc(filenameLen + 1, sizeof(**filename));
 	for (size_t i = 5, j = 0; j < filenameLen; i++, j++) {
 		(*filename)[j] = request[i];
 	}
 
-	printf("request: %s\n", request);
-	printf("request: %s\n", *filename);
 	return 0;
 }
 
@@ -171,10 +174,14 @@ int setResponse(char *filename, char **response, int clientSocket)
 		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
 	}
 
+	size_t bodyLen = strlen(body);
+
 	// Build HTTP header, with size in bytes
+//	char *header = NULL;
+//	setHeader(&header, OK, 
 	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
 	
-	*response = calloc(strlen(httpHeader) + strlen(body), sizeof(**response));
+	*response = calloc(strlen(httpHeader) + bodyLen, sizeof(**response));
 	strcpy(*response, httpHeader);
 	strcat(*response, body);
 	free(body);

@@ -15,12 +15,10 @@ void errorHandler(int type, char *msg, char *input, int socketFd)
 			dieWithUserMessage("FORBIDDEN", msg);
 		case NOT_FOUND:
 			stringFromFile("responses/404", &response);
+			printf("NOT_FOUND case: %s\n", response);
 			write(socketFd, response, strlen(response) + 1);
 			dieWithUserMessage("NOT_FOUND", msg);
 	}
-//	if (type == ERROR || type == NOT_FOUND || type == FORBIDDEN) {
-//		exit(EXIT_FAILURE);
-//	}
 }
 
 void dieWithUserMessage(const char *msg, const char *detail)
@@ -33,7 +31,7 @@ void dieWithUserMessage(const char *msg, const char *detail)
 }
 
 /*
- * This function is a wrapper for `perror()`.
+ * This function prints an error message and dies in the event of a system error.
  *
  * When a library function stores a non-zero value in `errno`, `perror()` can be
  * used to print the argument (in this case `msg`) along with an error message determined
