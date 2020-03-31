@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <netdb.h> // for getnameinfo()
 #include <signal.h>
+#include <wait.h>
 
 // Usual socket headers
 #include <sys/types.h>
@@ -22,9 +23,10 @@
 
 int serve(uint16_t port);
 int acceptTCPConnection(int serverSocket);
+void handleHTTPClient(int clientSocket);
 int router(char *request, int clientSocket, char **filename);
 void report(struct sockaddr_in *serverAddress);
 int setBody(char **body, char filename[]);
-int setResponse(char *filename, char httpHeader[], char **response, int clientSocket);
+int setResponse(char *filename, char **response, int clientSocket);
 
 #endif

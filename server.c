@@ -5,15 +5,6 @@
 
 int serve(uint16_t port)
 {
-	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
-//	char response[8000]; // This should be dynamically allocated
-
-	(void)signal(SIGCHLD, SIG_IGN);
-//	(void)signal(SIGHUP, SIG_IGN);
-//	for (int i = 0; i < 32; i++) {
-//		(void)close(i);
-//	}
-	(void)setpgrp();
 
 	// socket()
 	// -------------------------------------------------------------------------
@@ -47,9 +38,6 @@ int serve(uint16_t port)
 	}
 	report(&serverAddress);
 	int clientSocket;
-	int pid;
-	char recvBuffer[INPUT_BUFFER_SIZE];
-	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
 	size_t childProcessCount = 0;
 
 	// Wait for a connection from a client
@@ -58,42 +46,33 @@ int serve(uint16_t port)
 		clientSocket = acceptTCPConnection(serverSocket);
 
 		// Fork the process, for basic multi-client functionality.
-		if ((pid = fork()) == -1) {
-			// Error forking the process
+		pid_t pid = fork();
+		if (pid < 0) {
+			// Error forking the process - should we die here?
 			close(clientSocket);
 			continue;
-		} else if (pid > 0) {
-			// pid > 0 denotes that this is the parent, which should be closed.
-			// In this case, the parent loop continues and waits for a new connection,
-			// while the forked process handles the current client socket.
-			close(clientSocket);
-			continue;
+		} else if (pid == 0) {
+			// This is a child process.
+			close(serverSocket);
+			handleHTTPClient(clientSocket);
+			exit(EXIT_SUCCESS);
 		}
 
-		// Child process - parent never makes it this far.
-		printf("Number of forked processes: %lu\n", ++childProcessCount);
-		
-		int nBytesReceived = recv(clientSocket, recvBuffer, sizeof(recvBuffer), 0);
-		if (nBytesReceived < 0) {
-			errorHandler(FORBIDDEN, "Failed to read request.", "", clientSocket);
-		}
-		// Terminate the recvBuffer after the received bytes
-		if (nBytesReceived < INPUT_BUFFER_SIZE) {
-			recvBuffer[nBytesReceived] = 0;
-		} 
-
-		char *response = NULL;
-		char *filename = NULL;
-		router(recvBuffer, clientSocket, &filename);
-		if (setResponse(filename, httpHeader, &response, clientSocket) != 0) {
-			printf("Error setting the response.\n");
-			close(clientSocket);
-			return 1;
-		}
-		send(clientSocket, response, strlen(response) + 1, 0);
-		free(response);
-		free(filename);
+		printf("Spawned child process %d\n", pid);
 		close(clientSocket);
+		childProcessCount++;
+
+		// Clean up zombies
+		while (childProcessCount) {
+			pid = waitpid((pid_t) - 1, NULL, WNOHANG);
+			if (pid < 0) {
+				dieWithSystemMessage("waitpid() failed.");
+			} else if (pid == 0) {
+				break;
+			} else {
+				childProcessCount--;
+			}
+		}
 	}
 	return 0;
 }
@@ -117,6 +96,34 @@ int acceptTCPConnection(int serverSocket) {
 	// @TODO Print connection data here <----------------------------------------------------------------
 	
 	return clientSocket;
+}
+
+void handleHTTPClient(int clientSocket)
+{
+	char recvBuffer[INPUT_BUFFER_SIZE];
+	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
+	
+	int nBytesReceived = recv(clientSocket, recvBuffer, sizeof(recvBuffer), 0);
+	if (nBytesReceived < 0) {
+		errorHandler(FORBIDDEN, "Failed to read request.", "", clientSocket);
+	}
+	// Terminate the recvBuffer after the received bytes
+	if (nBytesReceived < INPUT_BUFFER_SIZE) {
+		recvBuffer[nBytesReceived] = 0;
+	} 
+
+	char *response = NULL;
+	char *filename = NULL;
+	router(recvBuffer, clientSocket, &filename);
+
+	if (setResponse(filename, &response, clientSocket) != 0) {
+		printf("Error setting the response.\n");
+		close(clientSocket);
+	}
+	send(clientSocket, response, strlen(response) + 1, 0);
+	free(response);
+	free(filename);
+	close(clientSocket);
 }
 
 int router(char *request, int clientSocket, char **filename)
@@ -157,18 +164,20 @@ int router(char *request, int clientSocket, char **filename)
 }
 
 
-int setResponse(char *filename, char httpHeader[], char **response, int clientSocket)
+int setResponse(char *filename, char **response, int clientSocket)
 {
 	char *body = NULL;
-//	char filename[] = "index.html";
 	if(setBody(&body, filename) != 0) {
 		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
-	} else {
-		*response = calloc(strlen(httpHeader) + strlen(body), sizeof(**response));
-		strcpy(*response, httpHeader);
-		strcat(*response, body);
-		free(body);
 	}
+
+	// Build HTTP header, with size in bytes
+	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
+	
+	*response = calloc(strlen(httpHeader) + strlen(body), sizeof(**response));
+	strcpy(*response, httpHeader);
+	strcat(*response, body);
+	free(body);
 	return 0;
 }
 
