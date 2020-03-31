@@ -1,21 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "server.h"
+#include "string-utilities.h"
 
 int serve(uint16_t port)
 {
 	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
-	char response[8000]; // This should be dynamically allocated
+//	char response[8000]; // This should be dynamically allocated
 
-	if (fork()) {
-		return 0;
-	}
-//	(void)signal(SIGCLD, SIG_IGN);
+	(void)signal(SIGCHLD, SIG_IGN);
 //	(void)signal(SIGHUP, SIG_IGN);
 //	for (int i = 0; i < 32; i++) {
 //		(void)close(i);
 //	}
 	(void)setpgrp();
+
 	// socket()
 	// -------------------------------------------------------------------------
 	int serverSocket = socket(
@@ -47,14 +46,16 @@ int serve(uint16_t port)
 		return 1;
 	}
 	report(&serverAddress);
-	int clientSocket, pid;
-	char recvBuffer[9999];
-	int counter = 0;
+	int clientSocket;
+	int pid;
+	char recvBuffer[INPUT_BUFFER_SIZE];
+	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
+	size_t childProcessCount = 0;
 
+	// Wait for a connection from a client
+	// --------------------------------------------------------------------------
 	while(1) {
-		// accept()
-		// ---------------------------------------------------------------------
-		clientSocket = accept(serverSocket, NULL, NULL);
+		clientSocket = acceptTCPConnection(serverSocket);
 
 		// Fork the process, for basic multi-client functionality.
 		if ((pid = fork()) == -1) {
@@ -62,41 +63,110 @@ int serve(uint16_t port)
 			close(clientSocket);
 			continue;
 		} else if (pid > 0) {
-			// pid > 0 denotes that this is the parent, which should be closed
+			// pid > 0 denotes that this is the parent, which should be closed.
+			// In this case, the parent loop continues and waits for a new connection,
+			// while the forked process handles the current client socket.
 			close(clientSocket);
 			continue;
 		}
+
+		// Child process - parent never makes it this far.
+		printf("Number of forked processes: %lu\n", ++childProcessCount);
 		
-		printf("Number of forked processes: %d\n", ++counter);
-		int received = recv(clientSocket, recvBuffer, sizeof(recvBuffer), 0);
-		if (received < 0) {
-			puts("No request received");
+		int nBytesReceived = recv(clientSocket, recvBuffer, sizeof(recvBuffer), 0);
+		if (nBytesReceived < 0) {
+			errorHandler(FORBIDDEN, "Failed to read request.", "", clientSocket);
 		}
-		printf("\nReceived:\n%s", recvBuffer);
-		if (setResponse(httpHeader, response) != 0) {
+		// Terminate the recvBuffer after the received bytes
+		if (nBytesReceived < INPUT_BUFFER_SIZE) {
+			recvBuffer[nBytesReceived] = 0;
+		} 
+
+		char *response = NULL;
+		char *filename = NULL;
+		router(recvBuffer, clientSocket, &filename);
+		if (setResponse(filename, httpHeader, &response, clientSocket) != 0) {
 			printf("Error setting the response.\n");
 			close(clientSocket);
 			return 1;
 		}
-		send(clientSocket, response, sizeof(response), 0);
+		send(clientSocket, response, strlen(response) + 1, 0);
+		free(response);
+		free(filename);
 		close(clientSocket);
 	}
 	return 0;
 }
 
-int setResponse(char httpHeader[], char response[])
+/**
+ * Returns a non-negative file descriptor of an accepted client socket.
+ *
+ * The accept() function extracts the first connection on the queue of pending connections,
+ * creating a new socket with the same socket type protocol and address family as the specified socket,
+ * and allocating a new file descriptor for that socket.
+ * */
+int acceptTCPConnection(int serverSocket) {
+	struct sockaddr_storage clientAddress;
+	socklen_t clientAddressLength = sizeof(clientAddress);
+	memset(&clientAddress, 0, clientAddressLength);
+
+	int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLength);
+	if (clientSocket < 0) {
+		dieWithSystemMessage("accept() failed");	
+	}
+	// @TODO Print connection data here <----------------------------------------------------------------
+	
+	return clientSocket;
+}
+
+int router(char *request, int clientSocket, char **filename)
 {
-	response[0] = 0;
-	char *body = "";
-	char filename[] = "index.html";
+	printf("request: %s\n", request);
+	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
+		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
+	}
+
+	// NUL terminate after the second space to simplify the request.
+	size_t requestLen = strlen(request);
+	for (size_t i = 4; i < requestLen; i++) {
+		if (request[i] == ' ') {
+			request[i] = 0;
+			break;
+		}
+	}
+	// Check for illegal access to parent directory "../"
+	// Difficult to test as most clients don't allow requests like this.
+	if (strstr(request, "..")) {
+		errorHandler(FORBIDDEN, "Parent directory (..) path names are forbidden.", request, clientSocket);
+	}
+
+	// Convert / to index.html
+	if(!strncmp(&request[0], "GET /\0", 6) || !strncmp(&request[0], "get /\0", 6)) {
+		(void)strcpy(request, "GET /index.html");
+	}
+
+	size_t filenameLen = strlen(request) - 5;
+	*filename = calloc(filenameLen + 1, sizeof(**filename));
+	for (size_t i = 5, j = 0; j < filenameLen; i++, j++) {
+		(*filename)[j] = request[i];
+	}
+
+	printf("request: %s\n", request);
+	printf("request: %s\n", *filename);
+	return 0;
+}
+
+
+int setResponse(char *filename, char httpHeader[], char **response, int clientSocket)
+{
+	char *body = NULL;
+//	char filename[] = "index.html";
 	if(setBody(&body, filename) != 0) {
-		printf("Can't load data from %s\n", filename);
-		strcpy(response, "HTTP/1.1 500 Internal Server Error\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n");
-		strcat(response, "<html><body><h1>+++ Out of Cheese Error +++</h1><h2>Redo from Start</h2>");
-		strcat(response, "<img src='https://cdn.pixabay.com/photo/2016/10/01/20/54/mouse-1708347_960_720.jpg'></body></html>");
+		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
 	} else {
-		strcpy(response, httpHeader);
-		strcat(response, body);
+		*response = calloc(strlen(httpHeader) + strlen(body), sizeof(**response));
+		strcpy(*response, httpHeader);
+		strcat(*response, body);
 		free(body);
 	}
 	return 0;
@@ -104,43 +174,7 @@ int setResponse(char httpHeader[], char response[])
 
 int setBody(char **body, char filename[])
 {
-	FILE *fp = fopen(filename, "r");
-	int errnum;
-	if (fp == NULL) {
-		errnum = errno;
-		fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
-		return 1;
-	} else if (fp != NULL) {
-		// Set the file position indicator for the stream pointed to by `fp`
-		if (fseek(fp, 0L, SEEK_END) == 0) {
-			// Get size of file: seek to the end of the file and then get the position.
-			// ftell(fp) returns the current value of the file position indicator.
-			long bufsize = ftell(fp);
-			if (bufsize == -1) {
-				errnum = errno;
-				fprintf(stderr, "Can't get the size of file %s: %s\n", filename, strerror(errnum));
-				return 1;
-			}
-			// Allocate an appropriately sized buffer to *body
-			*body = malloc(sizeof(char) * (bufsize + 1));
-			// Set file position indicator for stream pointed to by `fp` to the
-			// beginning of the file. The `rewind()` function is an option here,
-			// but that function returns void so can't be used as a check.
-			if (fseek(fp, 0L, SEEK_SET) != 0) { /* Error */ }
-
-			// Read file into memory
-			fread(*body, sizeof(char), bufsize, fp);
-			if (ferror(fp) != 0) {
-				fputs("Error reading file", stderr);
-			} else {
-				// Add a terminal null character.
-				// Note: Can't do it like this: `body[newLen++] = '\0';`
-				strcat(*body, "\0");
-			}
-		}
-		fclose(fp);
-	}
-	return 0;
+	return stringFromFile(filename, body); 
 }
 
 void report(struct sockaddr_in *serverAddress)
@@ -163,9 +197,3 @@ void report(struct sockaddr_in *serverAddress)
 	printf("Server listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 }
 
-// References
-// -----------
-// https://www.linuxquestions.org/questions/programming-9/fgets-read-a-whole-file-355504/#post1812050
-// https://beej.us/guide/bgnet/html/multi/inet_ntopman.html
-// http://www.zentut.com/c-tutorial/c-read-text-file/
-// https://www.tutorialspoint.com/cprogramming/c_error_handling.htm

@@ -3,7 +3,7 @@ CC = gcc ${CFLAGS}
 BIN = bin
 NAME = http-server
 
-$(NAME): ${BIN}/main.o ${BIN}/server.o ${BIN}/errors.o
+$(NAME): ${BIN}/main.o ${BIN}/server.o ${BIN}/errors.o ${BIN}/string-utilities.o
 	$(CC) -o ${BIN}/$@ $^
 
 ${BIN}/%.o: %.c
@@ -11,6 +11,7 @@ ${BIN}/%.o: %.c
 
 server.o: server.h
 errors.o: errors.h
+string-utilities.o: string-utilities.h
 
 .PHONY: clean
 clean:

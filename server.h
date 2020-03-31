@@ -15,11 +15,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define BACKLOG 100  // Passed to listen()
+#include "errors.h"
+
+#define BACKLOG 100		// Passed to listen()
+#define INPUT_BUFFER_SIZE 8096	// Max size of input buffer for the request received.
 
 int serve(uint16_t port);
+int acceptTCPConnection(int serverSocket);
+int router(char *request, int clientSocket, char **filename);
 void report(struct sockaddr_in *serverAddress);
 int setBody(char **body, char filename[]);
-int setResponse(char httpHeader[], char response[]);
+int setResponse(char *filename, char httpHeader[], char **response, int clientSocket);
 
 #endif

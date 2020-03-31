@@ -1,0 +1,12 @@
+HTTP/1.1 404 Not Found
+Content-Type:text/html
+Server: David's C HTTP Server
+Connection: close
+
+
+<html>
+<body>
+<h1>+++ 404 Out of Cheese Error +++</h1>
+<h2>Redo from Start</h2>;
+<img src='https://cdn.pixabay.com/photo/2016/10/01/20/54/mouse-1708347_960_720.jpg'></body></html>
+
