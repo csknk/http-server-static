@@ -183,8 +183,9 @@ int setResponse(char *filename, char **response, int clientSocket)
 	printf("bodyLen: %lu\n", bodyLen);
 
 	// Build HTTP header, with size in bytes
-//	char *header = NULL;
-//	setHeader(&header, OK, bodyLen); 
+	char *header = NULL;
+	setHeader(&header, OK, bodyLen); 
+	printf("\n-----\nheader: %s\n", header);
 	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
 	
 	*response = calloc(strlen(httpHeader) + bodyLen, sizeof(**response));
@@ -194,10 +195,15 @@ int setResponse(char *filename, char **response, int clientSocket)
 	return 0;
 }
 
-//int setHeader(char **header, int status, size_t bodyLen)
-//{
-//	return 0;
-//}
+int setHeader(char **header, int status, size_t bodyLength)
+{
+	printf("%d\n", status);
+	char *template = "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: %lu\nServer: David's C HTTP Server\nConnection: close\r\n\n";
+	size_t headerLength = snprintf(NULL, 0, template, bodyLength);
+	*header = calloc(headerLength + 1, sizeof(**header));
+	sprintf(*header, template, bodyLength);
+	return 0;
+}
 
 int setBody(char **body, char filename[])
 {
