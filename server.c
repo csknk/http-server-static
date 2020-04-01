@@ -62,17 +62,22 @@ int serve(uint16_t port)
 		}
 
 		printf("Spawned child process %d\n", pid);
-		close(clientSocket);
 		childProcessCount++;
+		printf("childProcessCount: %lu\n", childProcessCount);
+		close(clientSocket);
 
 		// Clean up zombies
 		while (childProcessCount) {
+			// NOHANG option with waitpid will result in a single zombie
+			// that is reaped when the parent closes.
 			pid = waitpid((pid_t) -1, NULL, WNOHANG);
+//			pid = waitpid((pid_t) -1, NULL, 0);
 			if (pid < 0) {
 				dieWithSystemMessage("waitpid() failed.");
 			} else if (pid == 0) {
 				break;
 			} else {
+				printf("Reaped pid %d\n", pid);
 				childProcessCount--;
 			}
 		}
@@ -175,10 +180,11 @@ int setResponse(char *filename, char **response, int clientSocket)
 	}
 
 	size_t bodyLen = strlen(body);
+	printf("bodyLen: %lu\n", bodyLen);
 
 	// Build HTTP header, with size in bytes
 //	char *header = NULL;
-//	setHeader(&header, OK, 
+//	setHeader(&header, OK, bodyLen); 
 	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
 	
 	*response = calloc(strlen(httpHeader) + bodyLen, sizeof(**response));
@@ -187,6 +193,11 @@ int setResponse(char *filename, char **response, int clientSocket)
 	free(body);
 	return 0;
 }
+
+//int setHeader(char **header, int status, size_t bodyLen)
+//{
+//	return 0;
+//}
 
 int setBody(char **body, char filename[])
 {

@@ -13,11 +13,13 @@ void errorHandler(int type, char *msg, char *input, int socketFd)
 			stringFromFile("responses/403", &response);
 			write(socketFd, response, strlen(response) + 1);
 			dieWithUserMessage("FORBIDDEN", msg);
+			break;
 		case NOT_FOUND:
 			stringFromFile("responses/404", &response);
 			printf("NOT_FOUND case: %s\n", response);
 			write(socketFd, response, strlen(response) + 1);
 			dieWithUserMessage("NOT_FOUND", msg);
+			break;
 	}
 }
 

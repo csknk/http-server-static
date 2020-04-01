@@ -20,6 +20,11 @@ Basic Multi-Client Support
 fork() the process HERE, after accepting a clientSocket.
 see: https://stackoverflow.com/a/13669947/3590673
 
+404 Not Found
+-------------
+Indicates that the client can communicate with the server, but the requested resource could not be found.
+
+
 
 Preventing Zombies
 ------------------
@@ -61,6 +66,21 @@ while (childProcessCount) {
 	}
 }
 ```
+Note that this method leaves a single zombie around until the server process shuts down, unless you pass `0` as an option to `waitpid()` in place of `WNOHANG`.
+
+To check for zombies:
+
+```bash
+# Display a process family tree, with zombies annotated `<devunct>`:
+ps ef
+
+# Alternatively:
+ps aux | grep Z
+
+# Similarly:
+ps -el | grep Z
+```
+
 See [TCP/IP Sockets in C][4] section 6.4.
 
 
