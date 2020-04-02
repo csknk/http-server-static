@@ -70,5 +70,6 @@ int setStatusString(char **statusString, enum statusCode s)
 	nChars = strlen(tmp);
 	*statusString = calloc(nChars + 1, sizeof(**statusString));
 	strcpy(*statusString, tmp);
+	return 0;
 }
 
