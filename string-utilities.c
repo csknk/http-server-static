@@ -30,4 +30,45 @@ int stringFromFile(char *filename, char **buffer)
 	return 0;
 }
 
+int setHeader(char **header, int status, size_t bodyLength)
+{
+	char *template = "HTTP/1.1 %d %s\nContent-Type:text/html\nContent-Length: %lu\nServer: David's C HTTP Server\nConnection: close\r\n\n";
+	char *statusString = NULL;
+	setStatusString(&statusString, status);
+	size_t headerLength = snprintf(NULL, 0, template, status, statusString, bodyLength);
+	*header = calloc(headerLength + 1, sizeof(**header));
+	sprintf(*header, template, status, statusString, bodyLength);
+	free(statusString);
+	return 0;
+}
+
+int setBody(char **body, char filename[])
+{
+	return stringFromFile(filename, body); 
+}
+
+int setStatusString(char **statusString, enum statusCode s)
+{
+	char *tmp;
+	size_t nChars;
+	switch(s) {
+		case ERROR:
+			tmp = "ERROR";
+			break;
+		case OK:
+			tmp = "OK";
+			break;
+		case FORBIDDEN:
+			tmp = "FORBIDDEN";
+			break;
+		case NOT_FOUND:
+		       	tmp = "NOT FOUND";
+			break;
+		default:
+			tmp = "UNKNOWN";
+	}
+	nChars = strlen(tmp);
+	*statusString = calloc(nChars + 1, sizeof(**statusString));
+	strcpy(*statusString, tmp);
+}
 

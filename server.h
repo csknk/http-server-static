@@ -26,8 +26,6 @@ int acceptTCPConnection(int serverSocket);
 void handleHTTPClient(int clientSocket);
 int router(char *request, int clientSocket, char **filename);
 void report(struct sockaddr_in *serverAddress);
-int setHeader(char **header, int status, size_t bodyLen);
-int setBody(char **body, char filename[]);
 int setResponse(char *filename, char **response, int clientSocket);
 
 #endif

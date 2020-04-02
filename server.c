@@ -6,31 +6,23 @@
 int serve(uint16_t port)
 {
 
-	// socket()
-	// -------------------------------------------------------------------------
 	int serverSocket = socket(
 			AF_INET,
 			SOCK_STREAM,
 			0
 			);
 
-	// Define `sockaddr_in`
-	// -------------------------------------------------------------------------
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(port);
 	serverAddress.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	// bind()
-	// -------------------------------------------------------------------------
 	int bound = bind(serverSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
 	if (bound != 0) {
 		printf("\nSocket not bound.\n");
 		return 1;
 	}
 
-	// listen()
-	// -------------------------------------------------------------------------
 	int listening = listen(serverSocket, BACKLOG);
 	if (listening < 0) {
 		printf("Error: The server is not listening.\n");
@@ -43,8 +35,6 @@ int serve(uint16_t port)
 	// Prevent forked child processes from becoming zombies when they exit
 	// signal(SIGCHLD, SIG_IGN);
 
-	// Wait for a connection from a client
-	// --------------------------------------------------------------------------
 	while(1) {
 		clientSocket = acceptTCPConnection(serverSocket);
 
@@ -184,20 +174,6 @@ int setResponse(char *filename, char **response, int clientSocket)
 	strcat(*response, body);
 	free(body);
 	return 0;
-}
-
-int setHeader(char **header, int status, size_t bodyLength)
-{
-	char *template = "HTTP/1.1 %d OK\nContent-Type:text/html\nContent-Length: %lu\nServer: David's C HTTP Server\nConnection: close\r\n\n";
-	size_t headerLength = snprintf(NULL, 0, template, status, bodyLength);
-	*header = calloc(headerLength + 1, sizeof(**header));
-	sprintf(*header, template, status, bodyLength);
-	return 0;
-}
-
-int setBody(char **body, char filename[])
-{
-	return stringFromFile(filename, body); 
 }
 
 void report(struct sockaddr_in *serverAddress)
