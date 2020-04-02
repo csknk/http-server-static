@@ -41,7 +41,7 @@ int serve(uint16_t port)
 	size_t childProcessCount = 0;
 	
 	// Prevent forked child processes from becoming zombies when they exit
-//	signal(SIGCHLD, SIG_IGN);
+	// signal(SIGCHLD, SIG_IGN);
 
 	// Wait for a connection from a client
 	// --------------------------------------------------------------------------
@@ -71,7 +71,6 @@ int serve(uint16_t port)
 			// NOHANG option with waitpid will result in a single zombie
 			// that is reaped when the parent closes.
 			pid = waitpid((pid_t) -1, NULL, WNOHANG);
-//			pid = waitpid((pid_t) -1, NULL, 0);
 			if (pid < 0) {
 				dieWithSystemMessage("waitpid() failed.");
 			} else if (pid == 0) {
@@ -125,8 +124,7 @@ void handleHTTPClient(int clientSocket)
 	router(recvBuffer, clientSocket, &filename);
 
 	if (setResponse(filename, &response, clientSocket) != 0) {
-		printf("Error setting the response.\n");
-		close(clientSocket);
+		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
 	send(clientSocket, response, strlen(response) + 1, 0);
 	free(response);
@@ -134,8 +132,7 @@ void handleHTTPClient(int clientSocket)
 	close(clientSocket);
 }
 
-int router(char *request, int clientSocket, char **filename)
-{
+int router(char *request, int clientSocket, char **filename) {
 	printf("request: %s\n", request);
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
 		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
@@ -180,16 +177,10 @@ int setResponse(char *filename, char **response, int clientSocket)
 	}
 
 	size_t bodyLen = strlen(body);
-	printf("bodyLen: %lu\n", bodyLen);
-
-	// Build HTTP header, with size in bytes
 	char *header = NULL;
 	setHeader(&header, OK, bodyLen); 
-	printf("\n-----\nheader: %s\n", header);
-	char httpHeader[] = "HTTP/1.1 200 OK\nContent-Type:text/html\nServer: David's C HTTP Server\nConnection: close\r\n\n";
-	
-	*response = calloc(strlen(httpHeader) + bodyLen, sizeof(**response));
-	strcpy(*response, httpHeader);
+	*response = calloc(strlen(header) + bodyLen, sizeof(**response));
+	strcpy(*response, header);
 	strcat(*response, body);
 	free(body);
 	return 0;
@@ -197,11 +188,10 @@ int setResponse(char *filename, char **response, int clientSocket)
 
 int setHeader(char **header, int status, size_t bodyLength)
 {
-	printf("%d\n", status);
-	char *template = "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: %lu\nServer: David's C HTTP Server\nConnection: close\r\n\n";
-	size_t headerLength = snprintf(NULL, 0, template, bodyLength);
+	char *template = "HTTP/1.1 %d OK\nContent-Type:text/html\nContent-Length: %lu\nServer: David's C HTTP Server\nConnection: close\r\n\n";
+	size_t headerLength = snprintf(NULL, 0, template, status, bodyLength);
 	*header = calloc(headerLength + 1, sizeof(**header));
-	sprintf(*header, template, bodyLength);
+	sprintf(*header, template, status, bodyLength);
 	return 0;
 }
 

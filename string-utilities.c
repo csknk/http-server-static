@@ -29,3 +29,5 @@ int stringFromFile(char *filename, char **buffer)
 	fclose(fp);	
 	return 0;
 }
+
+
