@@ -85,18 +85,40 @@ int acceptTCPConnection(int serverSocket) {
 	struct sockaddr_storage clientAddress;
 	socklen_t clientAddressLength = sizeof(clientAddress);
 	memset(&clientAddress, 0, clientAddressLength);
+	struct sockaddr *res = (struct sockaddr *)&clientAddress;
 
-	int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLength);
+	int clientSocket = accept(serverSocket, res, &clientAddressLength);
 	if (clientSocket < 0) {
 		dieWithSystemMessage("accept() failed");	
 	}
 	// @TODO Print connection data here <----------------------------------------------------------------
+	// SAMPLE CODE ++++++++++++++++++++++++++++++++++++++++++++
+	char *s = NULL;
+	switch(res->sa_family) {
+	    case AF_INET: {
+		struct sockaddr_in *addr_in = (struct sockaddr_in *)res;
+		s = malloc(INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &(addr_in->sin_addr), s, INET_ADDRSTRLEN);
+		break;
+	    }
+	    case AF_INET6: {
+		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)res;
+		s = malloc(INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), s, INET6_ADDRSTRLEN);
+		break;
+	    }
+	    default:
+		break;
+	}
+	printf("IP address: %s\n", s);
+	free(s);
 	
 	return clientSocket;
 }
 
 void handleHTTPClient(int clientSocket)
 {
+	// Size of recvBuffer?????????????????????
 	char recvBuffer[INPUT_BUFFER_SIZE];
 	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
 	
@@ -113,7 +135,9 @@ void handleHTTPClient(int clientSocket)
 	char *filename = NULL;
 	router(recvBuffer, clientSocket, &filename);
 
-	if (setResponse(filename, &response, clientSocket) != 0) {
+	// @TODO ------------
+	// What kind of status code? This should check the return from router()...
+	if (setResponse(filename, &response, OK, clientSocket) != 0) {
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
 	send(clientSocket, response, strlen(response) + 1, 0);
@@ -155,24 +179,6 @@ int router(char *request, int clientSocket, char **filename) {
 		(*filename)[j] = request[i];
 	}
 
-	return 0;
-}
-
-
-int setResponse(char *filename, char **response, int clientSocket)
-{
-	char *body = NULL;
-	if(setBody(&body, filename) != 0) {
-		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
-	}
-
-	size_t bodyLen = strlen(body);
-	char *header = NULL;
-	setHeader(&header, OK, bodyLen); 
-	*response = calloc(strlen(header) + bodyLen, sizeof(**response));
-	strcpy(*response, header);
-	strcat(*response, body);
-	free(body);
 	return 0;
 }
 

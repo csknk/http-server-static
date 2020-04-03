@@ -15,7 +15,7 @@ void errorHandler(int type, char *msg, char *input, int socketFd)
 			dieWithUserMessage("FORBIDDEN", msg);
 			break;
 		case NOT_FOUND:
-			stringFromFile("responses/404", &response);
+			setResponse("responses/404.html", &response, NOT_FOUND, 0); 
 			write(socketFd, response, strlen(response) + 1);
 			dieWithUserMessage("NOT_FOUND", msg);
 			break;

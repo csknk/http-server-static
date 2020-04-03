@@ -19,6 +19,6 @@ int stringFromFile(char *file, char **buffer);
 int setHeader(char **header, int status, size_t bodyLen);
 int setBody(char **body, char filename[]);
 int setStatusString(char **statusString, enum statusCode s);
-
+int setResponse(char *filename, char **response, int status, int clientSocket);
 
 #endif
