@@ -1,11 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "server.h"
-#include "string-utilities.h"
 
+/*
+ * Function that manages the server functionality.
+ *
+ * Sets up server socket and runs an infinite loop to accept and handle incoming connections.
+ *
+ * Each connection is forked into a child process. To prevent forked child processes from becoming zombies
+ * when they exit, we loop over child processes and call `waitpid()`. The NOHANG option for waitpid results
+ * in a single zombie, as each finished child process is reaped and a new one forked. The final zombie is
+ * reaped when the parent process closes.
+ * */
 int serve(uint16_t port)
 {
-
 	int serverSocket = socket(
 			AF_INET,
 			SOCK_STREAM,
@@ -32,13 +40,9 @@ int serve(uint16_t port)
 	int clientSocket;
 	size_t childProcessCount = 0;
 	
-	// Prevent forked child processes from becoming zombies when they exit
-	// signal(SIGCHLD, SIG_IGN);
-
 	while(1) {
 		clientSocket = acceptTCPConnection(serverSocket);
 
-		// Fork the process, for basic multi-client functionality.
 		pid_t pid = fork();
 		if (pid < 0) {
 			// Error forking the process - should we die here?
@@ -56,10 +60,7 @@ int serve(uint16_t port)
 		printf("childProcessCount: %lu\n", childProcessCount);
 		close(clientSocket);
 
-		// Clean up zombies
 		while (childProcessCount) {
-			// NOHANG option with waitpid will result in a single zombie
-			// that is reaped when the parent closes.
 			pid = waitpid((pid_t) -1, NULL, WNOHANG);
 			if (pid < 0) {
 				dieWithSystemMessage("waitpid() failed.");
@@ -85,24 +86,26 @@ int acceptTCPConnection(int serverSocket) {
 	struct sockaddr_storage clientAddress;
 	socklen_t clientAddressLength = sizeof(clientAddress);
 	memset(&clientAddress, 0, clientAddressLength);
-	struct sockaddr *res = (struct sockaddr *)&clientAddress;
+	struct sockaddr *genericClientAddressData = (struct sockaddr *)&clientAddress;
 
-	int clientSocket = accept(serverSocket, res, &clientAddressLength);
+	int clientSocket = accept(serverSocket, genericClientAddressData, &clientAddressLength);
+
 	if (clientSocket < 0) {
 		dieWithSystemMessage("accept() failed");	
 	}
 	// @TODO Print connection data here <----------------------------------------------------------------
 	// SAMPLE CODE ++++++++++++++++++++++++++++++++++++++++++++
 	char *s = NULL;
-	switch(res->sa_family) {
+	
+	switch(genericClientAddressData->sa_family) {
 	    case AF_INET: {
-		struct sockaddr_in *addr_in = (struct sockaddr_in *)res;
+		struct sockaddr_in *addr_in = (struct sockaddr_in *)genericClientAddressData;
 		s = malloc(INET_ADDRSTRLEN);
 		inet_ntop(AF_INET, &(addr_in->sin_addr), s, INET_ADDRSTRLEN);
 		break;
 	    }
 	    case AF_INET6: {
-		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)res;
+		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)genericClientAddressData;
 		s = malloc(INET6_ADDRSTRLEN);
 		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), s, INET6_ADDRSTRLEN);
 		break;
@@ -110,7 +113,7 @@ int acceptTCPConnection(int serverSocket) {
 	    default:
 		break;
 	}
-	printf("IP address: %s\n", s);
+	printf("+++++++\nIP address: %s\n+++++++\n", s);
 	free(s);
 	
 	return clientSocket;
@@ -133,7 +136,13 @@ void handleHTTPClient(int clientSocket)
 
 	char *response = NULL;
 	char *filename = NULL;
+	char *mimeType = NULL;
 	router(recvBuffer, clientSocket, &filename);
+
+
+	if (!fileTypeAllowed(filename, &mimeType)) {
+		errorHandler(FORBIDDEN, "mime type", "Requested file type not allowed.", clientSocket);
+	}
 
 	// @TODO ------------
 	// What kind of status code? This should check the return from router()...
@@ -143,9 +152,14 @@ void handleHTTPClient(int clientSocket)
 	send(clientSocket, response, strlen(response) + 1, 0);
 	free(response);
 	free(filename);
+	free(mimeType);
 	close(clientSocket);
 }
 
+/**
+ *
+ * @TODO We should check for 404s here...
+ * */
 int router(char *request, int clientSocket, char **filename) {
 	printf("request: %s\n", request);
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {

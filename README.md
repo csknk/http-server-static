@@ -15,19 +15,41 @@ In the connection thread:
 * Send response.
 * Close socket.
 
+Notes on Accepting Connections
+------------------------------
+The `accept()` system call extracts the first connection request on a queue of pending connections for the listening socket. It creates a new connected socket - a client socket - returning a file descriptor for that socket.
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+```
+
+The `addr` argument to `accept()` is a pointer to a `struct sockaddr`. In the [`acceptTCPConnection()` function][6], a pointer to `struct sockaddr_storage` is typecast to the required `struct sockaddr`:
+
+```c
+struct sockaddr_storage clientAddress;
+socklen_t clientAddressLength = sizeof(clientAddress);
+memset(&clientAddress, 0, clientAddressLength);
+struct sockaddr *res = (struct sockaddr *)&clientAddress;
+
+int clientSocket = accept(serverSocket, res, &clientAddressLength);
+
+```
+
+
+
 Basic Multi-Client Support
 --------------------------
 fork() the process HERE, after accepting a clientSocket.
 see: https://stackoverflow.com/a/13669947/3590673
 
-404 Not Found
--------------
-Indicates that the client can communicate with the server, but the requested resource could not be found.
+Forking Child Processes & Preventing Zombies
+--------------------------------------------
+In this project the infinite loop that accepts and handles client connections forks when the `accept()` system call is successful.
 
-
-
-Preventing Zombies
-------------------
 A zombie process is a defunct (finished, dead) process that still has an entry in the process table.
 
 When a child process completes, it sends a `SIGCHLD` signal to the process that created it. The parent process can send a `wait()` system call, allowing access to the child's exit status. After the `wait()` call, the child's entry is removed from the process table.
@@ -44,7 +66,6 @@ Generally, after a parent process forks a child process, it must use `wait()` or
 >
 >Man page: enter `man 3 wait` for more.
 
-In this project the infinite loop that accepts and handles client connections forks when the `accept()` system call is successful.
 
 Because all errors are handled in the child process, the parent does not need to know the exit status of the child process. One option hten is to instruct the parent process to ignore the `SIGCHLD` signal, so it doesn't need to `wait()`. By using `signal(SIGCHLD, SIG_IGN);` in the parent process, the children don't become defunct - they die completely.
 
@@ -97,3 +118,4 @@ Resources
 [3]: https://stackoverflow.com/a/13669947/3590673
 [4]: https://www.amazon.co.uk/TCP-IP-Sockets-Practical-Programmers/dp/0123745403
 [5]: http://beej.us/guide/bgipc/html/multi/fork.html
+[6]: https://github.com/csknk/http-server-static/blob/master/server.c#L84

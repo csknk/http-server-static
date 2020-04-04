@@ -1,5 +1,6 @@
 #ifndef ERRORS_H
 #define ERRORS_H
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
