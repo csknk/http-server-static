@@ -16,10 +16,10 @@ enum statusCode {
 };
 
 int stringFromFile(char *file, char **buffer);
-int setHeader(char **header, int status, size_t bodyLen);
+int setHeader(char **header, int status, ssize_t mimeTypeIndex, size_t bodyLen);
 int setBody(char **body, char filename[]);
 int setStatusString(char **statusString, enum statusCode s);
-int setResponse(char *filename, char **response, int status, char *mimeType, int clientSocket);
-int fileTypeAllowed(char *buffer, char **mimeType);
+int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex, int clientSocket);
+ssize_t fileTypeAllowed(char *buffer);
 
 #endif

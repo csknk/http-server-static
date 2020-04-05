@@ -14,12 +14,7 @@
  * */
 int serve(uint16_t port)
 {
-	int serverSocket = socket(
-			AF_INET,
-			SOCK_STREAM,
-			0
-			);
-
+	int serverSocket = socket(AF_INET, SOCK_STREAM,	0);
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(port);
@@ -139,14 +134,15 @@ void handleHTTPClient(int clientSocket)
 	char *mimeType = NULL;
 	router(recvBuffer, clientSocket, &filename);
 
-
-	if (!fileTypeAllowed(filename, &mimeType)) {
+	ssize_t mimeTypeIndex = -1;
+	if ((mimeTypeIndex = fileTypeAllowed(filename)) == -1) {
+		free(filename);
 		errorHandler(FORBIDDEN, "mime type", "Requested file type not allowed.", clientSocket);
 	}
 
 	// @TODO ------------
 	// What kind of status code? This should check the return from router()...
-	if (setResponse(filename, &response, OK, clientSocket) != 0) {
+	if (setResponse(filename, &response, OK, mimeTypeIndex, clientSocket) != 0) {
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
 	send(clientSocket, response, strlen(response) + 1, 0);

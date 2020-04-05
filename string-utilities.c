@@ -3,19 +3,19 @@
 static const struct {
 	char *ext;
 	char *filetype;
-} extensions[] = {
-	{ "css", "text/css" },  
-	{ "gif", "image/gif" },  
-	{ "jpg", "image/jpg" }, 
-	{ "png", "image/png" },  
-	{ "ico", "image/ico" },  
-	{ "zip", "image/zip" },  
-	{ "gz",  "image/gz"  },  
-	{ "tar", "image/tar" },  
-	{ "htm", "text/html" },  
-	{ "html", "text/html" },  
-	{ "jpeg", "image/jpeg" },
-	{ "js", "text/javascript" },
+} extensions[] = {			// Index
+	{ "css", "text/css" },		// 0	
+	{ "gif", "image/gif" },		// 1 
+	{ "jpg", "image/jpg" },		// 2 
+	{ "png", "image/png" },		// 3 
+	{ "ico", "image/ico" },		// 4 
+	{ "zip", "image/zip" },		// 5 
+	{ "gz",  "image/gz"  },		// 6 
+	{ "tar", "image/tar" },		// 7 
+	{ "htm", "text/html" },		// 8 
+	{ "html", "text/html" },	// 9 
+	{ "jpeg", "image/jpeg" },	// 10
+	{ "js", "text/javascript" },	// 11
 	{ 0, 0 }
 };
 
@@ -53,20 +53,26 @@ int stringFromFile(char *filename, char **buffer)
 	return 0;
 }
 
-int setResponse(char *filename, char **response, int status, char *mimeType, int clientSocket)
+int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex, int clientSocket)
 {
 	char *body = NULL;
 	if(setBody(&body, filename) != 0) {
+		free(body);
+		free(filename);
 		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
 	}
 
+
+	// @TODO Need to handle a response with no body - i.e. error status return.
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	size_t bodyLen = strlen(body);
 	char *header = NULL;
-	setHeader(&header, status, bodyLen); 
-	*response = calloc(strlen(header) + bodyLen, sizeof(**response));
+	setHeader(&header, status, mimeTypeIndex, bodyLen); 
+	*response = calloc(strlen(header) + bodyLen + 1, sizeof(**response));
 	strcpy(*response, header);
 	strcat(*response, body);
 	free(body);
+	free(header);
 	return 0;
 }
 
@@ -75,21 +81,22 @@ int setResponse(char *filename, char **response, int status, char *mimeType, int
  *
  * Includes the response code and body length.
  * */
-int setHeader(char **header, int status, size_t bodyLength)
+int setHeader(char **header, int status, ssize_t mimeTypeIndex, size_t bodyLength)
 {
 	char *template =
 		"HTTP/1.1 %d %s\n"
-		"Content-Type:text/html\n"
+		"Content-Type:%s\n"
 		"Content-Length: %lu\n"
 		"Server: David's C HTTP Server\n"
 		"Connection: close\r\n\n";
 
 	char *statusString = NULL;
 	setStatusString(&statusString, status);
-	
-	size_t headerLength = snprintf(NULL, 0, template, status, statusString, bodyLength);
+	char *fileType = extensions[mimeTypeIndex].filetype;
+
+	size_t headerLength = snprintf(NULL, 0, template, status, statusString, fileType, bodyLength);
 	*header = calloc(headerLength + 1, sizeof(**header));
-	sprintf(*header, template, status, statusString, bodyLength);
+	sprintf(*header, template, status, statusString, fileType, bodyLength);
 	
 	free(statusString);
 	return 0;
@@ -151,25 +158,25 @@ int setStatusString(char **statusString, enum statusCode s)
 
 /**
  * Determine if the filetype is in our array of allowed types, based on the filename extension.
- * If it is, set *mimeType to the appropriate value, this will be included in the response header.
- *
- * Note that the return type for this function indicates truthiness rather than success.
+ * If it is, return it's index in the array so that it can be easily accessed elsewhere.
  *
  * */
-int fileTypeAllowed(char *filename, char **mimeType)
+ssize_t fileTypeAllowed(char *filename)
 {
-	size_t buflen=strlen(filename);
-	*mimeType = NULL;
 	size_t extLen = 0;
+	ssize_t index = -1;
+	const char *filenameExtension = strrchr(filename, '.');
+	if (!filenameExtension) {
+		return -1;
+	}
+
 	for(size_t i = 0; extensions[i].ext != 0; i++) {
 		extLen = strlen(extensions[i].ext);
-		if(!strncmp(&filename[buflen - extLen], extensions[i].ext, extLen)) {
-			*mimeType = extensions[i].filetype;
+		if(!strncmp(filenameExtension + 1, extensions[i].ext, extLen)) {
+			index = i;
 			break;
 		}
 	}
-	if(*mimeType == 0) {
-		return 0;
-	}
-	return 1;
+	printf("\nmimeTypeIndex: %ld\n--------------------\n", index);
+	return index;
 }
