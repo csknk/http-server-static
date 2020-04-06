@@ -4,7 +4,7 @@ void errorHandler(int type, char *msg, char *input, int socketFd)
 {
 	switch (type) {
 		case ERROR:
-			fprintf(stderr, "%s: %s exiting pid = %d\n", msg, input, getpid());
+			fprintf(stderr, "exiting pid = %d, %s\n", getpid(), input);
 			dieWithSystemMessage(msg);
 			break;
 		case FORBIDDEN:

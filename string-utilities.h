@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <time.h>
 #include "errors.h"
 
 enum statusCode {
@@ -21,5 +22,6 @@ int setBody(char **body, char filename[]);
 int setStatusString(char **statusString, enum statusCode s);
 int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex, int clientSocket);
 ssize_t fileTypeAllowed(char *buffer);
+void timestamp(char **t);
 
 #endif

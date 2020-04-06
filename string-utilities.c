@@ -62,9 +62,6 @@ int setResponse(char *filename, char **response, int status, ssize_t mimeTypeInd
 		errorHandler(NOT_FOUND, "Not found", "", clientSocket);
 	}
 
-
-	// @TODO Need to handle a response with no body - i.e. error status return.
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	size_t bodyLen = strlen(body);
 	char *header = NULL;
 	setHeader(&header, status, mimeTypeIndex, bodyLen); 
@@ -177,6 +174,24 @@ ssize_t fileTypeAllowed(char *filename)
 			break;
 		}
 	}
-	printf("\nmimeTypeIndex: %ld\n--------------------\n", index);
 	return index;
+}
+
+void timestamp(char **str)
+{
+	time_t now = time(0);
+	printf("%s\n", ctime(&now));
+	struct tm *gtm = gmtime(&now);
+	char *template = "%d-%02d-%02d";
+	size_t length = snprintf(NULL, 0, template, 
+			gtm->tm_mday,
+			gtm->tm_mon + 1,
+			gtm->tm_year + 1900
+			) + 1;
+	*str = calloc(length, sizeof(**str));
+	snprintf(*str, length, template,
+			gtm->tm_mday,
+			gtm->tm_mon + 1,
+			gtm->tm_year + 1900
+			);
 }

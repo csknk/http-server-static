@@ -33,5 +33,6 @@ int acceptTCPConnection(int serverSocket);
 void handleHTTPClient(int clientSocket);
 int router(char *request, int clientSocket, char **filename);
 void report(struct sockaddr_in *serverAddress);
+void logConnection(struct sockaddr *genericClientAddress);
 
 #endif

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "server.h"
 
+#define MAX_PORT_DIGITS 6 
+
 /*
  * Function that manages the server functionality.
  *
@@ -14,6 +16,7 @@
  * */
 int serve(uint16_t port)
 {
+	// Create a socket and set up a structure to hold the server address.
 	int serverSocket = socket(AF_INET, SOCK_STREAM,	0);
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
@@ -22,8 +25,9 @@ int serve(uint16_t port)
 
 	int bound = bind(serverSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
 	if (bound != 0) {
-		printf("\nSocket not bound.\n");
-		return 1;
+		char portString[5 + MAX_PORT_DIGITS];
+		sprintf(portString, "port %d", port);
+		errorHandler(ERROR, "Socket not bound", portString, 0);
 	}
 
 	int listening = listen(serverSocket, BACKLOG);
@@ -50,9 +54,8 @@ int serve(uint16_t port)
 			exit(EXIT_SUCCESS);
 		}
 
-		printf("Spawned child process %d\n", pid);
+		printf("Child process %d\n", pid);
 		childProcessCount++;
-		printf("childProcessCount: %lu\n", childProcessCount);
 		close(clientSocket);
 
 		while (childProcessCount) {
@@ -88,29 +91,8 @@ int acceptTCPConnection(int serverSocket) {
 	if (clientSocket < 0) {
 		dieWithSystemMessage("accept() failed");	
 	}
-	// @TODO Print connection data here <----------------------------------------------------------------
-	// SAMPLE CODE ++++++++++++++++++++++++++++++++++++++++++++
-	char *s = NULL;
 	
-	switch(genericClientAddressData->sa_family) {
-	    case AF_INET: {
-		struct sockaddr_in *addr_in = (struct sockaddr_in *)genericClientAddressData;
-		s = malloc(INET_ADDRSTRLEN);
-		inet_ntop(AF_INET, &(addr_in->sin_addr), s, INET_ADDRSTRLEN);
-		break;
-	    }
-	    case AF_INET6: {
-		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)genericClientAddressData;
-		s = malloc(INET6_ADDRSTRLEN);
-		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), s, INET6_ADDRSTRLEN);
-		break;
-	    }
-	    default:
-		break;
-	}
-	printf("+++++++\nIP address: %s\n+++++++\n", s);
-	free(s);
-	
+	logConnection(genericClientAddressData);
 	return clientSocket;
 }
 
@@ -212,3 +194,30 @@ void report(struct sockaddr_in *serverAddress)
 	printf("Server listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 }
 
+void logConnection(struct sockaddr *genericClientAddressData)
+{
+	char *s = NULL;
+	
+	switch(genericClientAddressData->sa_family) {
+	    case AF_INET: {
+		struct sockaddr_in *addr_in = (struct sockaddr_in *)genericClientAddressData;
+		s = malloc(INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &(addr_in->sin_addr), s, INET_ADDRSTRLEN);
+		break;
+	    }
+	    case AF_INET6: {
+		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)genericClientAddressData;
+		s = malloc(INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), s, INET6_ADDRSTRLEN);
+		break;
+	    }
+	    default:
+		break;
+	}
+	char *t = NULL;
+	timestamp(&t);
+	printf("+++++++\n%s %s\n+++++++\n", s, t);
+	free(t);
+	free(s);
+
+}
