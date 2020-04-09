@@ -53,6 +53,16 @@ int stringFromFile(char *filename, char **buffer)
 	return 0;
 }
 
+/**
+ * Set a response.
+ *
+ * The response consists of a body and a header. The body is determined by the resource
+ * that has been requested (a filename) and the header includes the size of the body.
+ *
+ * If there is a problem setting the body, the `errorHandler()` function takes care of returning
+ * an appropriate response to the client socket.
+ *
+ * */
 int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex, int clientSocket)
 {
 	char *body = NULL;
@@ -177,6 +187,11 @@ ssize_t fileTypeAllowed(char *filename)
 	return index;
 }
 
+/**
+ * Set a timestamp.
+ * 
+ * Used for logging events.
+ * */
 void timestamp(char **str)
 {
 	time_t now = time(0);
