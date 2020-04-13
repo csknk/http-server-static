@@ -216,7 +216,7 @@ void logConnection(struct sockaddr *genericClientAddressData)
 	}
 	char *t = NULL;
 	timestamp(&t);
-	printf("+++++++\n%s %s\n+++++++\n", s, t);
+	printf("%s [%s]\n", s, t);
 	free(t);
 	free(s);
 

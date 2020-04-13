@@ -1,5 +1,7 @@
 #include "string-utilities.h"
 
+#define MAX_TIME_CHARS 32
+
 static const struct {
 	char *ext;
 	char *filetype;
@@ -195,18 +197,12 @@ ssize_t fileTypeAllowed(char *filename)
 void timestamp(char **str)
 {
 	time_t now = time(0);
-	printf("%s\n", ctime(&now));
 	struct tm *gtm = gmtime(&now);
-	char *template = "%d-%02d-%02d";
-	size_t length = snprintf(NULL, 0, template, 
-			gtm->tm_mday,
-			gtm->tm_mon + 1,
-			gtm->tm_year + 1900
-			) + 1;
-	*str = calloc(length, sizeof(**str));
-	snprintf(*str, length, template,
-			gtm->tm_mday,
-			gtm->tm_mon + 1,
-			gtm->tm_year + 1900
-			);
+	char timeBuffer[MAX_TIME_CHARS] = {0};
+	size_t n = strftime(timeBuffer, MAX_TIME_CHARS, "%d/%b/%G:%T %Z", gtm);
+	if (n == 0) {
+		errorHandler(ERROR, "strftime() error", "", 0);	
+	}
+	*str = calloc(n + 1, sizeof(**str));
+	strcpy(*str, timeBuffer);
 }

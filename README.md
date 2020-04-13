@@ -102,13 +102,30 @@ ps aux | grep Z
 ps -el | grep Z
 ```
 
-See [TCP/IP Sockets in C][4] section 6.4.
+See [TCP/IP Sockets in C][4](book) section 6.4.
 
+Setting the HTTP Return Code
+----------------------------
+The `setStatusString()` function sets a dynamically allocated string representing the HTTP return code.
+
+The status codes are defined as an enum - because of their values, they can't be effectively used to dereference an array of character strings, hence this function.
+
+This is not good for maintenance - codes are defined separately from the return strings - this is a compromise.
+
+An alternative would be a hash map/associative array of integers indexed by `char*` value, but this is a small project and doesn't warrant this.
+
+The approach taken by Apache httpd is to `#define` define codes (e.g. `#define HTTP_CONTINUE 100`), and using these values to dereference a large array of `char*` strings, using an `index_of_response()` function to compute the correct offsets from the x00 code of each level, such that a supplied index of 100 (the lowest possible return code value) returns the first element of the array (the correct string denoting a 100 return code). In this way, a supplied index of 200 returns the element at index 3, because there are only 3 1xx codes.
+
+For more info see:
+
+- [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73][7]
+- [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795][8]
+- [https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479][9]
 
 Resources
 ---------
 * [Good overview of programme flow][1]
-* [nweb][2]: tiny, safe web server - very useful article
+* [nweb][2]: tiny, safe web server - very useful article, few problems in the code (e.g. incorrectly determines file validity/extension)
 * [Notes on forking the process][3] when a client connection has been established
 * [Beej's notes on forking][5]
 
@@ -119,3 +136,6 @@ Resources
 [4]: https://www.amazon.co.uk/TCP-IP-Sockets-Practical-Programmers/dp/0123745403
 [5]: http://beej.us/guide/bgipc/html/multi/fork.html
 [6]: https://github.com/csknk/http-server-static/blob/master/server.c#L84
+[7]: [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73]
+[8]: [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795]
+[9]: [https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479]
