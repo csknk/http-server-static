@@ -144,7 +144,10 @@ int router(char *request, int clientSocket, char **filename) {
 		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
 	}
 	
-	// NUL terminate after the second space to simplify the request.
+	// Limit the request. Include the resource requested only.
+	// NUL terminate after the second space to end the request string. Because we've ruled out anything
+	// but GET requests, we know that the resource being requested starts after index 4 of the
+	// request e.g. `GET / HTTP/1.1`
 	size_t requestLen = strlen(request);
 	for (size_t i = 4; i < requestLen; i++) {
 		if (request[i] == ' ') {
