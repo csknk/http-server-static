@@ -41,7 +41,6 @@ int serve(uint16_t port)
 	
 	while(1) {
 		clientSocket = acceptTCPConnection(serverSocket);
-
 		pid_t pid = fork();
 		if (pid < 0) {
 			// Error forking the process - should we die here?
@@ -162,7 +161,7 @@ int router(char *request, int clientSocket, char **filename) {
 		errorHandler(FORBIDDEN, "Parent directory (..) path names are forbidden.", request, clientSocket);
 	}
 
-	// Convert / to index.html
+	// Convert / to index.html, HTTP request verb to uppercase.
 	if(!strncmp(&request[0], "GET /\0", 6) || !strncmp(&request[0], "get /\0", 6)) {
 		(void)strcpy(request, "GET /index.html");
 	}
@@ -197,30 +196,41 @@ void report(struct sockaddr_in *serverAddress)
 	printf("Server listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 }
 
+/**
+ * Use Common Log Format:
+ * - IP address of client
+ * - RFC 1413 identity of the client (not reliable, hyphen as placeholder)
+ * - userid, HTTP authentication (TODO, hyphen as placeholder)
+ * - Time the request was received
+ * - The request line from the client in double quotes
+ * - The returned status code
+ * - Size of object returned, not including headers (body size in bytes)
+ *
+ * */
 void logConnection(struct sockaddr *genericClientAddressData)
 {
-	char *s = NULL;
+	char *IPString = NULL;
 	
 	switch(genericClientAddressData->sa_family) {
 	    case AF_INET: {
 		struct sockaddr_in *addr_in = (struct sockaddr_in *)genericClientAddressData;
-		s = malloc(INET_ADDRSTRLEN);
-		inet_ntop(AF_INET, &(addr_in->sin_addr), s, INET_ADDRSTRLEN);
+		IPString = malloc(INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &(addr_in->sin_addr), IPString, INET_ADDRSTRLEN);
 		break;
 	    }
 	    case AF_INET6: {
 		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)genericClientAddressData;
-		s = malloc(INET6_ADDRSTRLEN);
-		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), s, INET6_ADDRSTRLEN);
+		IPString = malloc(INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), IPString, INET6_ADDRSTRLEN);
 		break;
 	    }
 	    default:
 		break;
 	}
-	char *t = NULL;
-	timestamp(&t);
-	printf("%s [%s]\n", s, t);
-	free(t);
-	free(s);
+	char *timeString = NULL;
+	timestamp(&timeString);
+	printf("%s - - [%s] \n", IPString, timeString);
+	free(timeString);
+	free(IPString);
 
 }

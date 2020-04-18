@@ -18,7 +18,7 @@ static const struct {
 	{ "html", "text/html" },	// 9 
 	{ "jpeg", "image/jpeg" },	// 10
 	{ "js", "text/javascript" },	// 11
-	{ 0, 0 }
+	{ 0, 0 }			// NULL for end
 };
 
 /**
