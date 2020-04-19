@@ -40,7 +40,13 @@ int serve(uint16_t port)
 	size_t childProcessCount = 0;
 	
 	while(1) {
-		clientSocket = acceptTCPConnection(serverSocket);
+		
+		LogData *log = calloc(1, sizeof(*log));
+		log->clientAddr = calloc(1, sizeof(*log->clientAddr));
+		clientSocket = acceptTCPConnection(serverSocket, log);
+		if (clientSocket == -1) {
+			continue; // accept() failed, retry
+		}
 		pid_t pid = fork();
 		if (pid < 0) {
 			// Error forking the process - should we die here?
@@ -49,13 +55,15 @@ int serve(uint16_t port)
 		} else if (pid == 0) {
 			// This is a child process.
 			close(serverSocket);
-			handleHTTPClient(clientSocket);
+			handleHTTPClient(clientSocket, log);
 			exit(EXIT_SUCCESS);
 		}
 
 		printf("Child process %d\n", pid);
 		childProcessCount++;
 		close(clientSocket);
+
+//		free(logData);
 
 		while (childProcessCount) {
 			pid = waitpid((pid_t) -1, NULL, WNOHANG);
@@ -73,31 +81,34 @@ int serve(uint16_t port)
 }
 
 /**
- * Returns a non-negative file descriptor of an accepted client socket.
+ * Returns a non-negative file descriptor of an accepted client socket. If accept() call fails
+ * returns -1.
  *
- * The accept() function extracts the first connection on the queue of pending connections,
+ * The accept() system call extracts the first connection on the queue of pending connections,
  * creating a new socket with the same socket type protocol and address family as the specified socket,
  * and allocating a new file descriptor for that socket.
  * */
-int acceptTCPConnection(int serverSocket) {
+int acceptTCPConnection(int serverSocket, LogData *log) {
 	struct sockaddr_storage clientAddress;
 	socklen_t clientAddressLength = sizeof(clientAddress);
 	memset(&clientAddress, 0, clientAddressLength);
+
 	struct sockaddr *genericClientAddressData = (struct sockaddr *)&clientAddress;
-
 	int clientSocket = accept(serverSocket, genericClientAddressData, &clientAddressLength);
-
 	if (clientSocket < 0) {
-		dieWithSystemMessage("accept() failed");	
+		fprintf(stderr, "accept() failed");
+		return -1;
 	}
 	
-	logConnection(genericClientAddressData);
+	log->clientAddr->sa_family = genericClientAddressData->sa_family;
+	memcpy(log->clientAddr->sa_data, genericClientAddressData->sa_data, 14);
+//	logConnection(genericClientAddressData);
 	return clientSocket;
 }
 
-void handleHTTPClient(int clientSocket)
+void handleHTTPClient(int clientSocket, LogData *log)
 {
-	// Size of recvBuffer?????????????????????
+	// TODO What should the correct size of recvBuffer be?
 	char recvBuffer[INPUT_BUFFER_SIZE];
 	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
 	
@@ -123,22 +134,25 @@ void handleHTTPClient(int clientSocket)
 
 	// @TODO ------------
 	// What kind of status code? This should check the return from router()...
-	if (setResponse(filename, &response, OK, mimeTypeIndex, clientSocket) != 0) {
+	if (setResponse(filename, &response, OK, mimeTypeIndex, clientSocket, log) != 0) {
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
+
 	send(clientSocket, response, strlen(response) + 1, 0);
 	free(response);
 	free(filename);
 	free(mimeType);
+//	printf("in handleHTTPClient: %lu\n", log->size);
+	logConnection(log);
 	close(clientSocket);
 }
 
 /**
- *
+ *9
  * @TODO We should check for 404s here...
  * */
 int router(char *request, int clientSocket, char **filename) {
-	printf("request: %s\n", request);
+//	printf("request: %s\n", request);
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
 		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
 	}
@@ -180,6 +194,7 @@ void report(struct sockaddr_in *serverAddress)
 {
 	char hostBuffer[INET6_ADDRSTRLEN];
 	char serviceBuffer[NI_MAXSERV]; // defined in `<netdb.h>`
+//	setHostServiceFromSocket(serverAddress, hostBuffer, serviceBuffer);
 	socklen_t addr_len = sizeof(*serverAddress);
 	int err = getnameinfo(
 			(struct sockaddr *) serverAddress,
@@ -196,6 +211,25 @@ void report(struct sockaddr_in *serverAddress)
 	printf("Server listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 }
 
+void setHostServiceFromSocket(struct sockaddr_in *socketAddress, char *hostBuffer, char *serviceBuffer)
+{
+//	char hostBuffer[INET6_ADDRSTRLEN];
+//	char serviceBuffer[NI_MAXSERV]; // defined in `<netdb.h>`
+	socklen_t addr_len = sizeof(*socketAddress);
+	int err = getnameinfo(
+			(struct sockaddr *) socketAddress,
+			addr_len,
+			hostBuffer,
+			INET6_ADDRSTRLEN,
+			serviceBuffer,
+			NI_MAXSERV,
+			NI_NUMERICHOST
+			);
+	if (err != 0) {
+		errorHandler(ERROR, "getnameinfo()", "", 0);
+	}
+}
+
 /**
  * Use Common Log Format:
  * - IP address of client
@@ -207,19 +241,20 @@ void report(struct sockaddr_in *serverAddress)
  * - Size of object returned, not including headers (body size in bytes)
  *
  * */
-void logConnection(struct sockaddr *genericClientAddressData)
+//void logConnection(struct sockaddr *genericClientAddressData)
+void logConnection(LogData *log)
 {
 	char *IPString = NULL;
 	
-	switch(genericClientAddressData->sa_family) {
+	switch(log->clientAddr->sa_family) {
 	    case AF_INET: {
-		struct sockaddr_in *addr_in = (struct sockaddr_in *)genericClientAddressData;
+		struct sockaddr_in *addr_in = (struct sockaddr_in *)log->clientAddr;
 		IPString = malloc(INET_ADDRSTRLEN);
 		inet_ntop(AF_INET, &(addr_in->sin_addr), IPString, INET_ADDRSTRLEN);
 		break;
 	    }
 	    case AF_INET6: {
-		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)genericClientAddressData;
+		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)log->clientAddr;
 		IPString = malloc(INET6_ADDRSTRLEN);
 		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), IPString, INET6_ADDRSTRLEN);
 		break;
@@ -228,9 +263,12 @@ void logConnection(struct sockaddr *genericClientAddressData)
 		break;
 	}
 	char *timeString = NULL;
+	char *status = "200";//NULL;
+
 	timestamp(&timeString);
-	printf("%s - - [%s] \n", IPString, timeString);
+	printf("--------%lu\n", log->size);
+	printf("%s - - [%s] \" \" %s %lu\n", IPString, timeString, status, log->size);
 	free(timeString);
 	free(IPString);
-
+	free(log);
 }

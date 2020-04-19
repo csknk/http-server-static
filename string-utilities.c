@@ -65,7 +65,9 @@ int stringFromFile(char *filename, char **buffer)
  * an appropriate response to the client socket.
  *
  * */
-int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex, int clientSocket)
+int setResponse(char *filename, char **response, int status, ssize_t mimeTypeIndex,
+		int clientSocket,
+		LogData *log)
 {
 	char *body = NULL;
 	if(setBody(&body, filename) != 0) {
@@ -75,6 +77,8 @@ int setResponse(char *filename, char **response, int status, ssize_t mimeTypeInd
 	}
 
 	size_t bodyLen = strlen(body);
+	log->size = bodyLen;
+	log->status = status;
 	char *header = NULL;
 	setHeader(&header, status, mimeTypeIndex, bodyLen); 
 	*response = calloc(strlen(header) + bodyLen + 1, sizeof(**response));
