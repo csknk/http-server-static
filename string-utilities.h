@@ -17,12 +17,12 @@ enum statusCode {
 };
 
 typedef struct l {
-	struct sockaddr *clientAddr;
 //	char *id;	// RFC 1413 identity of the client (not reliable, hyphen as placeholder)
 //	char *userid;	// userid, HTTP authentication
-//	char *req;	// The request line from the client in double quotes
-	int status;	// The returned status code
+//	int status;	// The returned status code
 	size_t size;	// Size of object returned, not including headers (body size in bytes)
+	struct sockaddr *clientAddr;
+	char *req;	// The request line from the client in double quotes
 } LogData;
 
 int stringFromFile(char *file, char **buffer);
@@ -33,5 +33,6 @@ int setResponse(char *filename, char **response, int status, ssize_t mimeTypeInd
 		int clientSocket, LogData *log);
 ssize_t fileTypeAllowed(char *buffer);
 void timestamp(char **t);
+ssize_t firstLine(char *str, char **line);
 
 #endif

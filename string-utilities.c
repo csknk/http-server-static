@@ -77,8 +77,10 @@ int setResponse(char *filename, char **response, int status, ssize_t mimeTypeInd
 	}
 
 	size_t bodyLen = strlen(body);
+	printf("BEFORE: %s\n", log->req);
 	log->size = bodyLen;
-	log->status = status;
+	printf("AFTER: %s\n", log->req);
+//	log->status = status;
 	char *header = NULL;
 	setHeader(&header, status, mimeTypeIndex, bodyLen); 
 	*response = calloc(strlen(header) + bodyLen + 1, sizeof(**response));
@@ -210,3 +212,28 @@ void timestamp(char **str)
 	*str = calloc(n + 1, sizeof(**str));
 	strcpy(*str, timeBuffer);
 }
+
+/**
+ * Get the first line of a string.
+ *
+ * Note that the strcspn search includes terminating null character - so if the target string does not
+ * contain a newline, strcspn returns the number of characters in the target string (excluding
+ * the terminating null character).
+ *
+ * Returns the number of characters in the found line.
+ *
+ * */
+ssize_t firstLine(char *str, char **line)
+{
+	ssize_t n = -1;
+	n = strcspn(str, "\n");
+	*line = calloc(n + 1, sizeof(*line));
+	if (*line == NULL) {
+		fprintf(stderr, "calloc() failed.");
+		return n;
+	}
+	// Explain the offset! was including '\n'
+	strncpy(*line, str, n - 1);
+	return n;
+}
+

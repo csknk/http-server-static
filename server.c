@@ -43,6 +43,7 @@ int serve(uint16_t port)
 		
 		LogData *log = calloc(1, sizeof(*log));
 		log->clientAddr = calloc(1, sizeof(*log->clientAddr));
+		log->req = NULL;
 		clientSocket = acceptTCPConnection(serverSocket, log);
 		if (clientSocket == -1) {
 			continue; // accept() failed, retry
@@ -63,8 +64,6 @@ int serve(uint16_t port)
 		childProcessCount++;
 		close(clientSocket);
 
-//		free(logData);
-
 		while (childProcessCount) {
 			pid = waitpid((pid_t) -1, NULL, WNOHANG);
 			if (pid < 0) {
@@ -81,6 +80,8 @@ int serve(uint16_t port)
 }
 
 /**
+ * Accept connection from client, log client address.
+ *
  * Returns a non-negative file descriptor of an accepted client socket. If accept() call fails
  * returns -1.
  *
@@ -102,7 +103,6 @@ int acceptTCPConnection(int serverSocket, LogData *log) {
 	
 	log->clientAddr->sa_family = genericClientAddressData->sa_family;
 	memcpy(log->clientAddr->sa_data, genericClientAddressData->sa_data, 14);
-//	logConnection(genericClientAddressData);
 	return clientSocket;
 }
 
@@ -124,6 +124,13 @@ void handleHTTPClient(int clientSocket, LogData *log)
 	char *response = NULL;
 	char *filename = NULL;
 	char *mimeType = NULL;
+	char *req = NULL;
+	firstLine(recvBuffer, &req);
+	log->req = realloc(log->req, (strlen(req) * sizeof(*(log->req))) + 1);
+	strcpy(log->req, req);
+	printf("%s\n", log->req);
+	free(req);
+	printf("%s\n", log->req);
 	router(recvBuffer, clientSocket, &filename);
 
 	ssize_t mimeTypeIndex = -1;
@@ -138,11 +145,11 @@ void handleHTTPClient(int clientSocket, LogData *log)
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
 
+	printf("after setResponse(): %s %lu\n", log->req, strlen(log->req));
 	send(clientSocket, response, strlen(response) + 1, 0);
 	free(response);
 	free(filename);
 	free(mimeType);
-//	printf("in handleHTTPClient: %lu\n", log->size);
 	logConnection(log);
 	close(clientSocket);
 }
@@ -249,13 +256,13 @@ void logConnection(LogData *log)
 	switch(log->clientAddr->sa_family) {
 	    case AF_INET: {
 		struct sockaddr_in *addr_in = (struct sockaddr_in *)log->clientAddr;
-		IPString = malloc(INET_ADDRSTRLEN);
+		IPString = calloc(INET_ADDRSTRLEN + 1, sizeof(*IPString));
 		inet_ntop(AF_INET, &(addr_in->sin_addr), IPString, INET_ADDRSTRLEN);
 		break;
 	    }
 	    case AF_INET6: {
 		struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)log->clientAddr;
-		IPString = malloc(INET6_ADDRSTRLEN);
+		IPString = calloc(INET6_ADDRSTRLEN + 1, sizeof(*IPString));
 		inet_ntop(AF_INET6, &(addr_in6->sin6_addr), IPString, INET6_ADDRSTRLEN);
 		break;
 	    }
@@ -266,9 +273,15 @@ void logConnection(LogData *log)
 	char *status = "200";//NULL;
 
 	timestamp(&timeString);
-	printf("--------%lu\n", log->size);
-	printf("%s - - [%s] \" \" %s %lu\n", IPString, timeString, status, log->size);
+	printf("%s - - [%s] \"%s\" %s %lu\n", IPString, timeString, log->req, status, log->size);
 	free(timeString);
 	free(IPString);
+	freeLog(log);
+}
+
+void freeLog(LogData *log)
+{
+	free(log->clientAddr);
+//	free(log->req);
 	free(log);
 }

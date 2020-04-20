@@ -28,23 +28,13 @@ typedef struct r {
 	
 } Request;
 
-//typedef struct l {
-//	struct sockaddr *clientAddr;
-////	char *id;	// RFC 1413 identity of the client (not reliable, hyphen as placeholder)
-////	char *userid;	// userid, HTTP authentication
-////	char *time;	// Time the request was received
-////	char *req;	// The request line from the client in double quotes
-//	int status;	// The returned status code
-//	size_t size;	// Size of object returned, not including headers (body size in bytes)
-//} LogData;
-
 int serve(uint16_t port);
 int acceptTCPConnection(int serverSocket, LogData *log);
 void handleHTTPClient(int clientSocket, LogData *log);
 int router(char *request, int clientSocket, char **filename);
 void report(struct sockaddr_in *serverAddress);
 void setHostServiceFromSocket(struct sockaddr_in *socketAddress, char *hostBuffer, char *serviceBuffer);
-//void logConnection(struct sockaddr *genericClientAddress);
 void logConnection(LogData *log);
+void freeLog(LogData *log);
 
 #endif
