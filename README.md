@@ -2,7 +2,7 @@ Basic HTTP Server in C
 ======================
 This server is not (yet) suitable for production use.
 
-At the moment, this is an educational project. In my opinion, the best way to understand servers & protocols is to build one.
+At the moment, this is an educational project. Building a server from scratch is a good way to learn about HTTP. It's stable enough to serve local files - I'm using it to serve notes written in markdown and converted to HTML.
 
 Overview
 --------
@@ -22,6 +22,24 @@ In the connection process:
 * Log the client server interaction
 * Close socket
 
+Build & Usage
+-------------
+This is a Linux project.
+
+### Build
+* Clone this repo
+* `cd` into the repo
+* Object files & binaries are by default added to the `bin` directory
+* In the project root run `make`
+
+### Usage
+* Run `./bin/http-server` to serve the test files - default port is 8001.
+* Access the site at `http://localhost:8001`
+* If you want to specify a port, add it as the first command line argument
+* `cd` into a directory of static HTML files and run the `http-server` script from there.
+
+You could install the script into your `$PATH`, or create a suitable alias. I don't recommend this. In most cases you're better off running `python3 -m http.server` from your HTML directory.
+
 Notes on Accepting Connections
 ------------------------------
 The `accept()` system call extracts the first connection request on a queue of pending connections for the listening socket. It creates a new connected socket - a client socket - returning a file descriptor for that socket.
@@ -31,30 +49,32 @@ The `accept()` system call extracts the first connection request on a queue of p
 #include <sys/socket.h>
 
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-
 ```
 
 The `addr` argument to `accept()` is a pointer to a `struct sockaddr`. In the [`acceptTCPConnection()` function][6], a pointer to `struct sockaddr_storage` is typecast to the required `struct sockaddr`:
 
 ```c
-struct sockaddr clientAddr;
-socklen_t clientAddrLen = sizeof(clientAddr);
-memset(&clientAddr, 0, clientAddrLen);
+struct sockaddr_storage genericClientAddr;
+socklen_t clientAddrLen = sizeof(genericClientAddr);
+memset(&genericClientAddr, 0, clientAddrLen);
 
-int clientSocket = accept(serverSocket, &clientAddr, &clientAddrLen);
+int clientSocket = accept(serverSocket, (struct sockaddr *)&genericClientAddr, &clientAddrLen);
 if (clientSocket < 0) {
 	fprintf(stderr, "accept() failed");
 	return -1;
 }
 ```
-Note that 
+Note that the generic `sockaddr_storage` struct is used, typecast to a generic `struct sockaddr` as required. The rationale for this decision is that the `sockaddr_storage` structure can hold either an IPv4 or IPv6 address.
 
+Depending on the IP version being handled, you would create either a `struct sockaddr_in` for IPv4 or a `struct sockaddr_in6` for IPv6, typecasting one of these to the `struct sockaddr *` required by `accept()`. The `sockaddr_storage` struct can hold _either_ address format.
 
+The act of casting to `struct sockadrr` for `accept()` and other functions is an idiosyncracy of socket programming.
 
 Basic Multi-Client Support
 --------------------------
-fork() the process HERE, after accepting a clientSocket.
-see: https://stackoverflow.com/a/13669947/3590673
+The project uses a multi-process approach to handle multiple clients.
+
+Multiple clients aren't really part of the use case at the moment. If this becomes important, I'd consider changing to a multi-threaded approach.
 
 Forking Child Processes & Preventing Zombies
 --------------------------------------------
