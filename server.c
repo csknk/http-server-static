@@ -56,12 +56,14 @@ int serve(uint16_t port)
 		}
 		pid_t pid = fork();
 		if (pid < 0) {
+//			freeLog(log);
 			close(clientSocket);
 			continue;
 		} else if (pid == 0) {
 			// This is a child process.
 			close(serverSocket);
 			handleHTTPClient(clientSocket, log);
+//			freeLog(log);
 			exit(EXIT_SUCCESS);
 		}
 
@@ -80,6 +82,7 @@ int serve(uint16_t port)
 				childProcessCount--;
 			}
 		}
+		freeLog(log);
 	}
 	return 0;
 }
@@ -200,7 +203,6 @@ void report(struct sockaddr_in *serverAddress)
 {
 	char hostBuffer[INET6_ADDRSTRLEN];
 	char serviceBuffer[NI_MAXSERV]; // defined in `<netdb.h>`
-//	setHostServiceFromSocket(serverAddress, hostBuffer, serviceBuffer);
 	socklen_t addr_len = sizeof(*serverAddress);
 	int err = getnameinfo(
 			(struct sockaddr *) serverAddress,
@@ -219,8 +221,6 @@ void report(struct sockaddr_in *serverAddress)
 
 void setHostServiceFromSocket(struct sockaddr_in *socketAddress, char *hostBuffer, char *serviceBuffer)
 {
-//	char hostBuffer[INET6_ADDRSTRLEN];
-//	char serviceBuffer[NI_MAXSERV]; // defined in `<netdb.h>`
 	socklen_t addr_len = sizeof(*socketAddress);
 	int err = getnameinfo(
 			(struct sockaddr *) socketAddress,
@@ -247,7 +247,6 @@ void setHostServiceFromSocket(struct sockaddr_in *socketAddress, char *hostBuffe
  * - Size of object returned, not including headers (body size in bytes)
  *
  * */
-//void logConnection(struct sockaddr *genericClientAddressData)
 void logConnection(LogData *log)
 {
 	char *IPString = NULL;
@@ -281,6 +280,9 @@ void logConnection(LogData *log)
 void freeLog(LogData *log)
 {
 	free(log->clientAddr);
-//	free(log->req);
+	free(log->req);
 	free(log);
+//	free(&(log->clientAddr));
+//	if (log->req) { free(&(log->req)); }
+//	free(log);
 }
