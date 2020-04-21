@@ -77,10 +77,7 @@ int setResponse(char *filename, char **response, int status, ssize_t mimeTypeInd
 	}
 
 	size_t bodyLen = strlen(body);
-	printf("BEFORE: %s\n", log->req);
 	log->size = bodyLen;
-	printf("AFTER: %s\n", log->req);
-//	log->status = status;
 	char *header = NULL;
 	setHeader(&header, status, mimeTypeIndex, bodyLen); 
 	*response = calloc(strlen(header) + bodyLen + 1, sizeof(**response));

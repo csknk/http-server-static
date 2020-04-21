@@ -16,8 +16,14 @@
  * */
 int serve(uint16_t port)
 {
-	// Create a socket and set up a structure to hold the server address.
+	// Create a socket, allow quick reuse
 	int serverSocket = socket(AF_INET, SOCK_STREAM,	0);
+	int reuse = 1;
+	if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		errorHandler(ERROR, "setsockopt() failed", "", 0);
+	}
+
+	// Set up a structure to hold the server address
 	struct sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(port);
@@ -135,8 +141,7 @@ void handleHTTPClient(int clientSocket, LogData *log)
 		errorHandler(FORBIDDEN, "mime type", "Requested file type not allowed.", clientSocket);
 	}
 
-	// @TODO ------------
-	// What kind of status code? This should check the return from router()...
+	// TODO Check the return from router()...
 	if (setResponse(filename, &response, OK, mimeTypeIndex, clientSocket, log) != 0) {
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
@@ -150,8 +155,8 @@ void handleHTTPClient(int clientSocket, LogData *log)
 }
 
 /**
- *9
- * @TODO We should check for 404s here...
+ *
+ * TODO We should check for 404s here...
  * */
 int router(char *request, int clientSocket, char **filename) {
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {

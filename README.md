@@ -1,19 +1,26 @@
 Basic HTTP Server in C
 ======================
-Programme flow for serving static content:
+This server is not (yet) suitable for production use.
+
+At the moment, this is an educational project. In my opinion, the best way to understand servers & protocols is to build one.
+
+Overview
+--------
+This server is designed to serve static content using the HTTP protocol.
+
+Programme flow:
 
 * Load settings.
 * Wait for connection.
-* When a connection is received, create a new thread and transfer the connection to it.
+* When a connection is received, create a forked process and transfer the connection to it.
 
-In the connection thread:
+In the connection process:
 
-* Analyse the request.
-* Load requested file.
-* Stream the file content.
-
-* Send response.
-* Close socket.
+* Analyse the request
+* Load requested file and prepare a response
+* Send response
+* Log the client server interaction
+* Close socket
 
 Notes on Accepting Connections
 ------------------------------
@@ -30,14 +37,17 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 The `addr` argument to `accept()` is a pointer to a `struct sockaddr`. In the [`acceptTCPConnection()` function][6], a pointer to `struct sockaddr_storage` is typecast to the required `struct sockaddr`:
 
 ```c
-struct sockaddr_storage clientAddress;
-socklen_t clientAddressLength = sizeof(clientAddress);
-memset(&clientAddress, 0, clientAddressLength);
-struct sockaddr *res = (struct sockaddr *)&clientAddress;
+struct sockaddr clientAddr;
+socklen_t clientAddrLen = sizeof(clientAddr);
+memset(&clientAddr, 0, clientAddrLen);
 
-int clientSocket = accept(serverSocket, res, &clientAddressLength);
-
+int clientSocket = accept(serverSocket, &clientAddr, &clientAddrLen);
+if (clientSocket < 0) {
+	fprintf(stderr, "accept() failed");
+	return -1;
+}
 ```
+Note that 
 
 
 
