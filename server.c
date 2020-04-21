@@ -50,7 +50,6 @@ int serve(uint16_t port)
 		}
 		pid_t pid = fork();
 		if (pid < 0) {
-			// Error forking the process - should we die here?
 			close(clientSocket);
 			continue;
 		} else if (pid == 0) {
@@ -90,18 +89,18 @@ int serve(uint16_t port)
  * and allocating a new file descriptor for that socket.
  * */
 int acceptTCPConnection(int serverSocket, LogData *log) {
-	struct sockaddr clientAddr;
-	socklen_t clientAddrLen = sizeof(clientAddr);
-	memset(&clientAddr, 0, clientAddrLen);
+	struct sockaddr_storage genericClientAddr;
+	socklen_t clientAddrLen = sizeof(genericClientAddr);
+	memset(&genericClientAddr, 0, clientAddrLen);
 	
-	int clientSocket = accept(serverSocket, &clientAddr, &clientAddrLen);
+	int clientSocket = accept(serverSocket, (struct sockaddr *)&genericClientAddr, &clientAddrLen);
 	if (clientSocket < 0) {
 		fprintf(stderr, "accept() failed");
 		return -1;
 	}
 	
-	log->clientAddr->sa_family = clientAddr.sa_family;
-	memcpy(log->clientAddr->sa_data, clientAddr.sa_data, 14);
+	log->clientAddr->sa_family = ((struct sockaddr *)&genericClientAddr)->sa_family;
+	memcpy(log->clientAddr->sa_data, ((struct sockaddr *)&genericClientAddr)->sa_data, 14);
 	return clientSocket;
 }
 
@@ -127,9 +126,7 @@ void handleHTTPClient(int clientSocket, LogData *log)
 	firstLine(recvBuffer, &req);
 	log->req = realloc(log->req, (strlen(req) * sizeof(*(log->req))) + 1);
 	strcpy(log->req, req);
-	printf("%s\n", log->req);
 	free(req);
-	printf("%s\n", log->req);
 	router(recvBuffer, clientSocket, &filename);
 
 	ssize_t mimeTypeIndex = -1;
@@ -144,7 +141,6 @@ void handleHTTPClient(int clientSocket, LogData *log)
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
 
-	printf("after setResponse(): %s %lu\n", log->req, strlen(log->req));
 	send(clientSocket, response, strlen(response) + 1, 0);
 	free(response);
 	free(filename);
@@ -158,7 +154,6 @@ void handleHTTPClient(int clientSocket, LogData *log)
  * @TODO We should check for 404s here...
  * */
 int router(char *request, int clientSocket, char **filename) {
-//	printf("request: %s\n", request);
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
 		errorHandler(FORBIDDEN, "Only simple GET operation supported", request, clientSocket);
 	}
