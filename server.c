@@ -90,19 +90,18 @@ int serve(uint16_t port)
  * and allocating a new file descriptor for that socket.
  * */
 int acceptTCPConnection(int serverSocket, LogData *log) {
-	struct sockaddr_storage clientAddress;
-	socklen_t clientAddressLength = sizeof(clientAddress);
-	memset(&clientAddress, 0, clientAddressLength);
-
-	struct sockaddr *genericClientAddressData = (struct sockaddr *)&clientAddress;
-	int clientSocket = accept(serverSocket, genericClientAddressData, &clientAddressLength);
+	struct sockaddr clientAddr;
+	socklen_t clientAddrLen = sizeof(clientAddr);
+	memset(&clientAddr, 0, clientAddrLen);
+	
+	int clientSocket = accept(serverSocket, &clientAddr, &clientAddrLen);
 	if (clientSocket < 0) {
 		fprintf(stderr, "accept() failed");
 		return -1;
 	}
 	
-	log->clientAddr->sa_family = genericClientAddressData->sa_family;
-	memcpy(log->clientAddr->sa_data, genericClientAddressData->sa_data, 14);
+	log->clientAddr->sa_family = clientAddr.sa_family;
+	memcpy(log->clientAddr->sa_data, clientAddr.sa_data, 14);
 	return clientSocket;
 }
 
