@@ -52,18 +52,17 @@ int serve(uint16_t port)
 		log->req = NULL;
 		clientSocket = acceptTCPConnection(serverSocket, log);
 		if (clientSocket == -1) {
-			continue; // accept() failed, retry
+			 // accept() failed, retry
+			 continue;
 		}
 		pid_t pid = fork();
 		if (pid < 0) {
-//			freeLog(log);
 			close(clientSocket);
 			continue;
 		} else if (pid == 0) {
 			// This is a child process.
 			close(serverSocket);
 			handleHTTPClient(clientSocket, log);
-//			freeLog(log);
 			exit(EXIT_SUCCESS);
 		}
 

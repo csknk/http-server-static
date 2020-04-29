@@ -20,7 +20,7 @@
 #include "string-utilities.h"
 
 #define BACKLOG 100		// Passed to listen()
-#define INPUT_BUFFER_SIZE 16192	// Max size of input buffer for the request received.
+#define INPUT_BUFFER_SIZE 8096	// Max size of input buffer for the request received.
 
 typedef struct r {
 	char *method;
