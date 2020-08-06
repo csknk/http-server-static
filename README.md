@@ -166,6 +166,6 @@ Resources
 [4]: https://www.amazon.co.uk/TCP-IP-Sockets-Practical-Programmers/dp/0123745403
 [5]: http://beej.us/guide/bgipc/html/multi/fork.html
 [6]: https://github.com/csknk/http-server-static/blob/master/server.c#L84
-[7]: [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73]
-[8]: [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795]
-[9]: [https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479]
+[7]: https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73
+[8]: https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795
+[9]: https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479
