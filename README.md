@@ -148,9 +148,9 @@ The approach taken by Apache httpd is to `#define` define codes (e.g. `#define H
 
 For more info see:
 
-- [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73][7]
-- [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795][8]
-- [https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479][9]
+* [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L73][7]
+* [https://github.com/apache/httpd/blob/trunk/modules/http/http_protocol.c#L795][8]
+* [https://github.com/apache/httpd/blob/trunk/include/httpd.h#L479][9]
 
 Resources
 ---------
