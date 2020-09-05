@@ -114,7 +114,7 @@ int acceptTCPConnection(int serverSocket, LogData *log) {
 
 void handleHTTPClient(int clientSocket, LogData *log)
 {
-	// TODO What should the correct size of recvBuffer be?
+	// @TODO What should the correct size of recvBuffer be?
 	char recvBuffer[INPUT_BUFFER_SIZE];
 	memset(recvBuffer, 0, sizeof(char) * INPUT_BUFFER_SIZE);
 	
@@ -143,7 +143,7 @@ void handleHTTPClient(int clientSocket, LogData *log)
 		errorHandler(FORBIDDEN, "mime type", "Requested file type not allowed.", clientSocket);
 	}
 
-	// TODO Check the return from router()...
+	// @TODO Check the return from router()...
 	if (setResponse(filename, &response, OK, mimeTypeIndex, clientSocket, log) != 0) {
 		errorHandler(ERROR, "Error setting the response.", "", clientSocket); 
 	}
@@ -158,7 +158,7 @@ void handleHTTPClient(int clientSocket, LogData *log)
 
 /**
  *
- * TODO We should check for 404s here...
+ * @TODO We should check for 404s here...
  * */
 int router(char *request, int clientSocket, char **filename) {
 	if(strncmp(request, "GET ", 4) && strncmp(request, "get ", 4)) {
@@ -239,7 +239,7 @@ void setHostServiceFromSocket(struct sockaddr_in *socketAddress, char *hostBuffe
  * Use Common Log Format:
  * - IP address of client
  * - RFC 1413 identity of the client (not reliable, hyphen as placeholder)
- * - userid, HTTP authentication (TODO, hyphen as placeholder)
+ * - userid, HTTP authentication @TODO: hyphen as placeholder
  * - Time the request was received
  * - The request line from the client in double quotes
  * - The returned status code
@@ -267,7 +267,7 @@ void logConnection(LogData *log)
 		break;
 	}
 	char *timeString = NULL;
-	char *status = "200";//NULL;
+	char *status = "200";
 
 	timestamp(&timeString);
 	printf("%s - - [%s] \"%s\" %s %lu\n", IPString, timeString, log->req, status, log->size);
@@ -281,7 +281,4 @@ void freeLog(LogData *log)
 	free(log->clientAddr);
 	free(log->req);
 	free(log);
-//	free(&(log->clientAddr));
-//	if (log->req) { free(&(log->req)); }
-//	free(log);
 }
