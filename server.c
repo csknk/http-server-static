@@ -132,7 +132,11 @@ void handleHTTPClient(int clientSocket, LogData *log)
 	char *mimeType = NULL;
 	char *req = NULL;
 	firstLine(recvBuffer, &req);
-	log->req = realloc(log->req, (strlen(req) * sizeof(*(log->req))) + 1);
+	char *tmpReq = realloc(log->req, (strlen(req) * sizeof(*(log->req))) + 1);
+	if (tmpReq == NULL) {
+		dieWithSystemMessage("Memory allocation: realloc() failure.");	
+	}
+	log->req = tmpReq;
 	strcpy(log->req, req);
 	free(req);
 	router(recvBuffer, clientSocket, &filename);

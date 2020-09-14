@@ -25,7 +25,6 @@
 typedef struct r {
 	char *method;
 	char *route;
-	
 } Request;
 
 int serve(uint16_t port);
