@@ -1,4 +1,4 @@
-CFLAGS = -std=gnu99 -W -Wall -pedantic -g
+CFLAGS = -std=gnu99 -fPIE -W -Wall -pedantic -g
 CC = gcc ${CFLAGS}
 BIN = bin
 NAME = http-server
